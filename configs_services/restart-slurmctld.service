@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart Slurm Controller after system initialization
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart slurmctld
+
+[Install]
+WantedBy=multi-user.target
