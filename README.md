@@ -2,7 +2,7 @@
 
 Este guia prático apresenta um passo a passo de como configurar o Slurm com multiplos nós de trabalho.
 
-O guia utiliza como referência o Ubuntu 22.04  (com *cgroups*). O mesmo resultado devem ser alcançadas em outras distribuições baseadas em Ubuntu ou Debian.
+O guia utiliza como referência o Ubuntu 22.04  (com *cgroups*). Os mesmos resultados devem ser alcançadas em outras distribuições baseadas em Ubuntu/Debian.
 
 
 
