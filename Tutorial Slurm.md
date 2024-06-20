@@ -487,7 +487,7 @@ git clone https://github.com/marluciobarbosa/slurm.git
 3. Instalar pré-requisitos para BD:
 
 ```bash
-sudo apt install python3 gcc make openssl ruby ruby-dev libpam0g-dev libmariadb-dev mariadb-server build-essential libssl-dev numactl hwloc libmunge-dev man2html lua5.3 -y
+sudo apt install -y python3 gcc make openssl ruby ruby-dev libpam0g-dev libmariadb-dev mariadb-server build-essential libssl-dev numactl hwloc libmunge-dev man2html lua5.4
 sudo gem install fpm
 sudo systemctl enable mysql
 sudo systemctl start mysql
@@ -559,14 +559,14 @@ sudo chown slurm /var/spool/slurm/ctld /var/spool/slurm/d /var/log/slurm
 3. **Copiar serviços slurm:**
 
 ```bash
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurmdbd.service /etc/systemd/system/
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurmctld.service /etc/systemd/system/
+sudo cp /storage/slurm/configs_services/slurmdbd.service /etc/systemd/system/
+sudo cp /storage/slurm/configs_services/slurmctld.service /etc/systemd/system/
 ```
 
 4. **Copiar a configuração do slurm DB:**
 
 ```bash
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurmdbd.conf /etc/slurm/
+sudo cp /storage/slurm/configs_services/slurmdbd.conf /etc/slurm/
 sudo chmod 600 /etc/slurm/slurmdbd.conf
 sudo chown slurm /etc/slurm/slurmdbd.conf
 ```
@@ -599,7 +599,7 @@ sudo systemctl start slurmctld
 7. **Se o `masternode` for um nó de computação (`worker`) [aconselho a incluí-lo, por facilidade, com recursos limitados]:**
 
 ```bash
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurmd.service /etc/systemd/system/
+sudo cp /storage/slurm/configs_services/slurmd.service /etc/systemd/system/
 sudo systemctl enable slurmd
 sudo systemctl start slurmd
 ```
@@ -682,7 +682,7 @@ Você deve verificar a página de [download](https://download.schedmd.com/slurm/
 ```bash
 cd /storage
 sudo dpkg -i  slurm-24.05.0_1.0_arm64.deb
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurmd.service /etc/systemd/system
+sudo cp /storage/slurm/configs_services/slurmd.service /etc/systemd/system
 ```
 
 ##### 7.2.2.2 Portas abertas para comunicação com o slurm:
@@ -699,7 +699,7 @@ sudo systemctl start slurmd
 
 ##### 7.2.2.3 Configurar o Slurm:
 
-Em `/storage/slurm_ubuntu_gpu_cluster/configs_services/slurm.conf`, altere:
+Em `/storage/slurm/configs_services/slurm.conf`, altere:
 
 ```ini
 ControlMachine=masternode.master.local # use seu FQDN
@@ -717,10 +717,10 @@ NodeName=workernode CPUs=2 Boards=1 SocketsPerBoard=2 CoresPerSocket=1 ThreadsPe
 Depois que você terminar de editar o `slurm.conf`:
 
 ```bash
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurm.conf /storage/
+sudo cp /storage/slurm/configs_services/slurm.conf /storage/
 ```
 
-Edite o arquivo `/storage/slurm_ubuntu_gpu_cluster/configs_services/gres.conf`.
+Edite o arquivo `/storage/slurm/configs_services/gres.conf`.
 
 ```ini
 NodeName=masternode Name=gpu File=/dev/nvidia0
@@ -729,16 +729,16 @@ NodeName=workernode Name=gpu File=/dev/nvidia0
 
 Você pode usar o `nvidia-smi para` descobrir o número que deve ser usado em vez de `0` em `nvidia0`. Você o encontrará à esquerda do nome da GPU. 
 
-**Caso <u>não tenha GPUs</u>, comente a linha `GresTypes=gpu` no arquivo `/storage/slurm_ubuntu_gpu_cluster/configs_services/slurm.conf`.**
+**Caso <u>não tenha GPUs</u>, comente a linha `GresTypes=gpu` no arquivo `/storage/slurm/configs_services/slurm.conf`.**
 
 No `workernode`, crie o diretório slurm: `sudo mkdir /etc/slurm/`
 
 Copie os arquivos .conf (<u>exceto</u> slurmdbd.conf) em <u>**todas as máquinas (workers e master node)**</u>.
 
 ```bash
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/cgroup* /etc/slurm/
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/slurm.conf /etc/slurm/
-sudo cp /storage/slurm_ubuntu_gpu_cluster/configs_services/gres.conf /etc/slurm/
+sudo cp /storage/slurm/configs_services/cgroup* /etc/slurm/
+sudo cp /storage/slurm/configs_services/slurm.conf /etc/slurm/
+sudo cp /storage/slurm/configs_services/gres.conf /etc/slurm/
 ```
 
 Esse diretório também deve ser criado nos `workers`:
