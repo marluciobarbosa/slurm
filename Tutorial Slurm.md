@@ -2,6 +2,8 @@
 
 Guia sobre como configurar o cluster gpu no Ubuntu 22.04 usando slurm (com *<u>cgroups</u>*).
 
+[TOC]
+
 ## 0. Suposições
 
 - masternode 100.xx.100.xx
@@ -161,8 +163,6 @@ Verifique a instalação do CUDA
 nvcc --version
 ```
 
-
-
 ### 1.1 Alternativamente para instalar o Cuda 12.5 com cuda drivers
 
 Atualize o sistema operacional
@@ -184,7 +184,9 @@ wget https://developer.download.nvidia.com/compute/cuda/<release>/local_installe
 sh cuda_<release>_<version>_linux.run -m=kernel-open
 ```
 
-**Obs**: Verifique a versão do Cuda mais recente em https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu
+> [!NOTE]
+>
+>  Verifique a versão do Cuda mais recente em https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu
 
 Por exemplo:
 
@@ -293,8 +295,6 @@ Se solicitado, insira a senha do usuário na máquina slave para completar a có
 
 ## 3. Sincronize GID/UIDs
 
-
-
 ### 3.1 Crie usuários munge e slurm:
 
 Nos nós `masternode` e `workernode`:
@@ -397,11 +397,10 @@ NFS, ou Network File System, é um protocolo de sistema de arquivos distribuído
 
 ```bash
 sudo apt update
-sudo apt install -y nfs-kernel-server
+sudo apt install -y nfs-kernel-server quota
 sudo mkdir /storage -p
 sudo chown usuario:grupo /storage/
-sudo nano /etc/exports
-/storage 200.xx.200.xx(rw,sync,no_root_squash,no_subtree_check)
+echo "/storage 200.xx.200.xx(rw,sync,no_root_squash,no_subtree_check)" | sudo tee -a /etc/exports
 sudo systemctl restart nfs-kernel-server
 sudo ufw allow from 200.xx.200.xx to any port nfs
 ```
@@ -410,7 +409,9 @@ Substitua `200.xx.200.xx` pelo IP do workenode.
 
 Substitua `usuario:grupo` por um usuário e grupo existente no `masternode` (**sugestão**: `$USER:$USER$`) .
 
-**Obs:** Note que a `linha 6` exemplifica apenas um único nó. Devem existir uma linha para cada nó que acessará o volume, exceto para o nó hospedeiro do volume.
+> [!IMPORTANT]
+>
+> Note que a `linha 5` exemplifica apenas um **<u>único</u> nó**. Devem existir uma linha para cada nó que acessará o volume, exceto para o nó hospedeiro do volume.
 
 ### 5.2 `workernode`:
 
@@ -426,8 +427,6 @@ sudo chown usuario:grupo /storage/
 Substitua `100.xx.100.xx` pelo IP do masternode. 
 
 Substitua `usuario:grupo` por um usuário e grupo existente no workenode.
-
-
 
 ## 6. Configure o MUNGE
 
@@ -447,7 +446,9 @@ sudo chown munge /storage/munge.key
 sudo chmod 400 /storage/munge.key
 ```
 
-Você deverá obter `STATUS:          Success (0)` ao executar a `instrução 4`.
+> [!TIP]
+>
+> Você deverá obter `STATUS:          Success (0)` ao executar a `instrução 4`.
 
 ### 6.2 `workernode`:
 
@@ -459,7 +460,9 @@ sudo systemctl start munge
 munge -n | unmunge | grep STATUS
 ```
 
-Você deverá obter `STATUS:          Success (0)` ao executar a `instrução 5`.
+> [!TIP]
+>
+> Você deverá obter `STATUS:          Success (0)` ao executar a `instrução 5`.
 
 ## 7. Configure o Slurm
 
@@ -512,9 +515,9 @@ flush privileges;
 exit
 ```
 
-
-
-**Obs**: Modifique a `senha_para_usuario_slurm` para a senha desejada para o usuário `slurm`.
+> [!CAUTION]
+>
+> Modifique a `senha_para_usuario_slurm` para a senha desejada para o usuário `slurm`.
 
 ### 7.2 Configure o Slurm
 
@@ -526,6 +529,7 @@ Você deve verificar a página de [download](https://download.schedmd.com/slurm/
 
 ```bash
 cd /storage
+mkdir -p /storage/config
 wget https://download.schedmd.com/slurm/slurm-24.05.0.tar.bz2
 tar xvjf slurm-24.05.0.tar.bz2
 cd slurm-24.05.0/
@@ -536,24 +540,30 @@ make install
 cd ..
 ```
 
-**Em caso de falhas**: Em algumas distribuições, o `pam_dir` pode ser `/lib/security/` ou `/usr/lib/security/`. Para localizar o diretório correto, execute `find /lib -name '*pam*.so'`ou `find /usr/lib -name '*pam*.so'`.  O diretório desejado conterá as bibliotecas `pam_debug.so`, `pam_selinux.so` e `pam_group.so`. O diretório pode ter uma estrutura dada por `/usr/lib/`**ARQUITETURA**-linux-gnu`/security/`.`
+> [!TIP]
+>
+> Em algumas distribuições, o `pam_dir` pode ser `/lib/security/` ou `/usr/lib/security/`. Para localizar o diretório correto, execute `find /lib -name '*pam*.so'`ou `find /usr/lib -name '*pam*.so'`.  O diretório desejado conterá as bibliotecas `pam_debug.so`, `pam_selinux.so` e `pam_group.so`. O diretório pode ter uma estrutura dada por `/usr/lib/`**ARQUITETURA**-linux-gnu`/security/`.`
 
 ##### 7.2.1.2 Instalar o Slurm
 
 1. **Criando e instalando  o pacote do Slurm**
 
 ```bash
-sudo fpm -s dir -t deb -v 1.0 -n slurm-24.05.0 --prefix=/usr -C /tmp/slurm-build/ .
-sudo dpkg -i slurm-24.05.0_1.0_arm64.deb
+sudo mkdir -p /storage/bin
+sudo fpm -s dir -t deb -v 1.0 -n slurm-24.05.0 --prefix=/usr -C /tmp/slurm-build/ -p /storage/bin/slurm.deb
+sudo dpkg -i /storage/bin/slurm.deb
 ```
 
-**OBS**: Observe a saída do comando da linha 1. Uma mensagem como `Created package {:path=>"slurm-24.05.0_1.0_arm64.deb"}` será apresentada. O `path`apresentado na mensagem que deve ser utilizado na linha 2. e na instalação no `workernode`.
+> [!NOTE]
+>
+> Observe a saída do comando da linha `2`. Uma mensagem como `Created package {:path=>"slurm.deb"}` será apresentada. O `path`apresentado na mensagem que deve ser utilizado na linha `3` e na instalação no `workernode`.
 
 2. **Criando os diretórios:**
 
 ```bash
 sudo mkdir -p /etc/slurm /etc/slurm/prolog.d /etc/slurm/epilog.d /var/spool/slurm/ctld /var/spool/slurm/d /var/log/slurm
 sudo chown slurm /var/spool/slurm/ctld /var/spool/slurm/d /var/log/slurm
+sudo chmod 755 /var/log/slurm
 ```
 
 3. **Copiar serviços slurm:**
@@ -594,7 +604,9 @@ sudo systemctl enable slurmctld
 sudo systemctl start slurmctld
 ```
 
-**OBS**: O serviço ainda não está configurado, então `sudo systemctl status slurmctld` retornará <u>**falha**</u>. Caso deseje testar no `masternode`, execute o passo seguinte ou termine de configurar o `workernode`.
+> [!WARNING]
+>
+> O serviço ainda não está configurado, então `sudo systemctl status slurmctld` retornará <u>**falha**</u>. Caso deseje testar no `masternode`, execute o passo seguinte ou termine de configurar o `workernode`.
 
 7. **Se o `masternode` for um nó de computação (`worker`) [aconselho a incluí-lo, por facilidade, com recursos limitados]:**
 
@@ -606,37 +618,20 @@ sudo systemctl start slurmd
 
 ##### 7.2.1.3 Solução de contorno
 
+> [!IMPORTANT]
+>
+> Não resolva problema inexistente. Utilize essa solução <u>apenas</u> na existência do problema.
+
 O serviço `slurmctld` pode não subir corretamente durante o boot, devido a dependências de outros serviços. Uma solução de contorno é garantir que o serviço  reinicie automaticamente após a inicialização de todos os serviços da máquina.
 
 Para isso, execute os seguintes passos:
 
-1. **Criar o arquivo de serviço personalizado:**
-
-   Crie um novo arquivo de unidade para o serviço personalizado de reinicialização do `slurmctld`.
+1. **Copia o arquivo de serviço personalizado:**
 
    ```bash
-   sudo nano /etc/systemd/system/restart-slurmctld.service
+   sudo cp /storage/slurm/configs_services/restart-slurmctld.service /etc/systemd/system/
    ```
-
-2. **Adicionar a configuração do serviço:**
-
-   Adicione o seguinte conteúdo ao arquivo `restart-slurmctld.service`:
-
-   ```ini
-   [Unit]
-   Description=Restart Slurm Controller after system initialization
-   After=multi-user.target
    
-   [Service]
-   Type=oneshot
-   ExecStart=/bin/systemctl restart slurmctld
-   
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-   Isso garante que o serviço `slurmctld` será reiniciado uma vez que o sistema atinja o alvo `multi-user.target`, que é um estado em que a maioria dos serviços de sistema já foi inicializada.
-
 3. **Recarregar as configurações do `systemd`:**
 
    ```bash
@@ -659,7 +654,7 @@ Para isso, execute os seguintes passos:
 
 6. **Verificar o status do serviço:**
 
-Após a reinicialização, verifique o status do serviço `slurmctld` para garantir que ele foi reiniciado corretamente.
+Após a reinicialização, verifique o status do serviço `slurmctld` para garantir que ele foi reiniciado corretamente [<u>isso é válido após o término da configuração</u>].
 
 ```bash
 sudo systemctl status slurmctld
@@ -671,8 +666,6 @@ sudo systemctl status slurmctld
 sudo systemctl status restart-slurmctld
 ```
 
-### 
-
 #### 7.2.2 Configuração do Slurm no `workernode`
 
 ##### 7.2.2.1 Instalação do Slurm
@@ -681,7 +674,7 @@ Você deve verificar a página de [download](https://download.schedmd.com/slurm/
 
 ```bash
 cd /storage
-sudo dpkg -i  slurm-24.05.0_1.0_arm64.deb
+sudo dpkg -i /storage/bin/slurm.deb
 sudo cp /storage/slurm/configs_services/slurmd.service /etc/systemd/system
 ```
 
@@ -699,7 +692,19 @@ sudo systemctl start slurmd
 
 ##### 7.2.2.3 Configurar o Slurm:
 
-Em `/storage/slurm/configs_services/slurm.conf`, altere:
+Copia o arquivo `slurm.conf` para personalizá-lo:
+
+```bash
+sudo cp /storage/slurm/configs_services/slurm.conf /storage/config/
+```
+
+Se tiver GPU(s), copie também o arquivo `gres.conf` para personalizá-lo:
+
+```bash
+sudo cp /storage/slurm/configs_services/gres.conf /storage/config/
+```
+
+Em `/storage/config/slurm.conf`, altere:
 
 ```ini
 ControlMachine=masternode.master.local # use seu FQDN
@@ -711,16 +716,14 @@ Use `sudo slurmd -C` para imprimir as especificações da máquina. Você deve c
 Exemplo de como deve ficar em seu arquivo de configuração:
 
 ```ini
-NodeName=workernode CPUs=2 Boards=1 SocketsPerBoard=2 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=1967
+NodeName=workernode NodeAddr=100.xx.100.xx CPUs=2 Boards=1 SocketsPerBoard=2 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=1967
 ```
 
-Depois que você terminar de editar o `slurm.conf`:
+Observe que o comando `sudo slurmd -C` pode não o `NodeAddr`. Nesse caso, o `NodeAddr` deve ser acrescentado para cada `workernode` com o `IP` correspodente.
 
-```bash
-sudo cp /storage/slurm/configs_services/slurm.conf /storage/
-```
+Observe ainda que o comando `sudo slurmd -C` retorna o `UpTime`. Isso é apenas para conferencia e <u>**não deve ser inserido**</u> no arquivo `slurm.conf`.
 
-Edite o arquivo `/storage/slurm/configs_services/gres.conf`.
+Edite o arquivo `/storage/config/gres.conf`.
 
 ```ini
 NodeName=masternode Name=gpu File=/dev/nvidia0
@@ -729,7 +732,7 @@ NodeName=workernode Name=gpu File=/dev/nvidia0
 
 Você pode usar o `nvidia-smi para` descobrir o número que deve ser usado em vez de `0` em `nvidia0`. Você o encontrará à esquerda do nome da GPU. 
 
-**Caso <u>não tenha GPUs</u>, comente a linha `GresTypes=gpu` no arquivo `/storage/slurm/configs_services/slurm.conf`.**
+**Caso <u>não tenha GPUs</u>, comente a linha `GresTypes=gpu` no arquivo `/storage/config/slurm.conf`.**
 
 No `workernode`, crie o diretório slurm: `sudo mkdir /etc/slurm/`
 
@@ -737,15 +740,16 @@ Copie os arquivos .conf (<u>exceto</u> slurmdbd.conf) em <u>**todas as máquinas
 
 ```bash
 sudo cp /storage/slurm/configs_services/cgroup* /etc/slurm/
-sudo cp /storage/slurm/configs_services/slurm.conf /etc/slurm/
-sudo cp /storage/slurm/configs_services/gres.conf /etc/slurm/
+sudo cp /storage/config/slurm.conf /etc/slurm/
+sudo cp /storage/config/gres.conf /etc/slurm/
 ```
 
 Esse diretório também deve ser criado nos `workers`:
 
 ```bash
-sudo mkdir -p /var/spool/slurm/d
-sudo chown slurm /var/spool/slurm/d
+sudo mkdir -p /var/spool/slurm/d /var/log/slurm
+sudo chown slurm /var/spool/slurm/d /var/log/slurm
+sudo chmod 755 /var/log/slurm
 ```
 
 ##### 7.2.2.4 Configurar cgroups
@@ -754,7 +758,7 @@ sudo chown slurm /var/spool/slurm/d
 sudo nano /etc/default/grub
 ```
 
-Para implementar as limitações de memória dos trabalhos e usuários do SLURM. Defina cgroups de memória em todos os trabalhadores  com a adição da linha abaixo no arquivo `/etc/default/grub`:
+Para implementar as limitações de memória dos trabalhos e usuários do SLURM. Defina cgroups de memória em <u>**todos os workers**</u>  com a adição da linha abaixo no arquivo `/etc/default/grub`:
 
 ```bash
 GRUB_CMDLINE_LINUX_DEFAULT="cgroup_enable=memory systemd.unified_cgroup_hierarchy=0"
@@ -766,18 +770,134 @@ Então
 sudo update-grub
 ```
 
+**Nota Importante**: Se `masternode` for também um nó de trabalho (`workernode`), as alterações no grub devem ser executadas  também no `masternode`.
+
+#### 7.2.3 Configurando o envio de e-mails
+
+Para configurar o `sSMTP` para enviar emails através do servidor SMTP do Gmail usando uma senha de aplicativo (senha de app), siga os passos abaixo. O Gmail requer autenticação usando SSL/TLS para enviar emails, e a senha de aplicativo é necessária para aplicativos de terceiros como o `sSMTP`. 
+
+Você pode ajustar os passos para utilizar o seu SMTP de preferência.
+
+**Os procedimentos a seguir <u>devem ser</u> executados no `masternode`.**
+
+##### 7.2.3.1 Gerar Senha de Aplicativo no Gmail
+
+Para permitir que o `sSMTP` envie emails através do Gmail, você precisa gerar uma senha de aplicativo. Siga estes passos:
+
+- **Passo 1:** Faça login na sua conta do Gmail.
+- **Passo 2:** Acesse a página de Gerenciamento de Conta Google em [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+- **Passo 7:** Digite um nome para identificar o `sSMTP`, por exemplo, "ssmtp".
+- **Passo 8:** Clique em "Criar".
+
+Anote a senha de aplicativo gerada. Esta será a senha que você deve usar no campo `AuthPass` no arquivo `/etc/ssmtp/ssmtp.conf`.
+
+##### 7.2.3.2 Configuração inicial
+
+
+1. Instale o pacote ssmtp:
+
+```bash
+sudo apt-get install -y ssmtp
+```
+
+2. Configure o arquivo de configuração `/etc/ssmtp/ssmtp.conf` com suas credenciais de e-mail:
+
+```bash
+root=seu_email@gmail.com
+mailhub=smtp.gmail.com:587
+hostname=seu_hostname
+AuthUser=seu_email@gmail.com
+AuthPass=sua_senha_do_gmail
+UseTLS=YES
+UseSTARTTLS=YES
+```
+
+Substitua `seu_email@gmail.com`, `sua_senha_do_gmail` e `seu_hostname` pelos valores apropriados.
+
+3. Certifique-se de que o Gmail está configurado para permitir "Aplicativos menos seguros" ou "Acesso a app não seguro" nas configurações de segurança da sua conta do Google.
+
+##### 7.2.3.3 Configuração do script
+
+Copie o script  `/storage/slurm/scripts/slurm-email.sh` para `/storage/scripts/slurm-email.sh`:
+
+```bash
+sudo mkdir -p /storage/scripts
+sudo cp /storage/slurm/scripts/slurm-email.sh /storage/scripts/slurm-email.sh
+```
+
+Modifique a permissão do arquivo para permitir execução
+
+```bash
+sudo chmod +x /storage/scripts/slurm-email.sh
+```
+
+Este script extrai informações relevantes do corpo da mensagem enviada pelo Slurm, como o ID do trabalho, nome e status. Em seguida, ele obtém os caminhos dos arquivos de saída e erro do Slurm, lê seu conteúdo (se existirem) e cria um corpo de e-mail em formato HTML contendo essas informações.
+
+Edite o arquivo `/storage/scripts/slurm-email.sh` com as suas preferências.
+
+##### 7.2.3.4 Considerações de segurança
+
+Pressupõe que o usuário `slurm` tem permissão para executar o comando `sudo cat` sem senha para ler os arquivos de saída e erro do Slurm. Isso é feito adicionando uma linha ao arquivo `/etc/sudoers`:
+
+1. Abra o arquivo `/etc/sudoers` para edição usando o comando `visudo`:
+
+```bash
+sudo visudo
+```
+
+2. Adicione a seguinte linha no final do arquivo `/etc/sudoers`:
+
+```bash
+slurm ALL=(root) NOPASSWD: /bin/cat /storage/home/*
+```
+
+> [!CAUTION]
+>
+> Lembre-se de que é importante revisar cuidadosamente as permissões concedidas e garantir que elas sejam as mínimas necessárias para a funcionalidade desejada, seguindo os princípios de menor privilégio e necessidade de conhecer.
+
+##### 7.2.3.5 Exemplo de uso [só funcionará após a completa configuração do Slurm]
+
+A configuracão de e-mail faz uso dos seguintes parâmetros: `--job-name`, `--output`, `--error`
+
+1. Abra o arquivo `/etc/sudoers` para edição usando o comando `visudo`:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=meu_job
+#SBATCH --output=meu_job.out
+#SBATCH --error=meu_job.err
+#SBATCH --partition=fila1
+#SBATCH --nodes=1
+#SBATCH --ntasks=2
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --time=01:00:00
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=email@exemplo.com
+
+date
+echo "Job iniciado no nó: $(hostname)"
+echo "Usando $(nproc) núcleos de CPU"
+lsb_release -a
+echo "Job finalizado"
+```
+
 ### 7.3 Iniciar Slurm
 
-Reinicie as máquinas (masternode e nós de trabalho).
+**<u>Reinicie as máquinas antes de prosseguir (`masternode` e `workenode`).</u>**
 
-#### 7.3.1 Em masternode
+```bash
+sudo reboot
+```
+
+#### 7.3.1 Em `masternode`
 
 ```bash
 sudo systemctl restart slurmctld
 sudo systemctl restart slurmdbd
 ```
 
-Se o masternode for um nó de computação:
+Se o `masternode` for um nó de computação:
 
 ```bash
 sudo systemctl restart slurmd
@@ -789,7 +909,7 @@ sudo systemctl restart slurmd
 sudo systemctl restart slurmd
 ```
 
-Finalmente, nem **<u>todos</u>** os nós, execute:
+#### 7.3.2 Em todos os nós:
 
 ```bash
 sudo apt update
@@ -797,19 +917,17 @@ sudo apt upgrade
 sudo apt autoremove
 ```
 
-
-
 ## 8. Logs
 
 Se algo não funcionar, você poderá encontrar os registros de `slurmctld`, `slurmdbd` e `slurmd` em `/var/log/slurm/`.
 
-
-
 ## 9. Scripts
 
-Também adicionei um script simples para verificar se o `slurm` funciona, que executaria `srun hostname`, que basicamente imprimiria o nó no qual o trabalho foi iniciado.
+Em `/storage/slurm/scripts/`, tem-se scripts utéis para a gestão cotidiana dos usuários da máquina, além de um script de teste da solução (`script_slurm_hostname.sh`).
 
-Você precisará mover o arquivo para o diretório `/storage`.
+O script de teste serve para verificar se o `slurm` funciona.  O script executa `srun hostname`, que basicamente imprimiria o nó no qual o trabalho foi iniciado.
+
+Você precisará mover o arquivo para o diretório `/storage/home`. 
 
 Dentro do script, altere:
 
@@ -819,9 +937,14 @@ Dentro do script, altere:
 
 Em seguida, você pode executar o script com:
 
-`sbatch script_slurm_hostname.sh`
+```bash
+sudo mkdir -p /storage/home
+cd /storage/home
+sudo cp /storage/slurm/scripts/script_slurm_hostname.sh .
+sbatch script_slurm_hostname.sh
+```
 
-### 9.2 script_slurm_hostname.sh
+### 9.1 Conteúdo do arquivo script_slurm_hostname.sh
 
 ```bash
 #!/bin/bash
@@ -840,7 +963,7 @@ srun hostname
 
 ## 10. Gerenciando usuários
 
-
+Nessa seção são apresentadas rotinas comuns de gestão de usuários
 
 ### 10.1 Adicionando usuários
 
@@ -933,8 +1056,6 @@ sudo ./add_user.sh maria
 ```bash
 sudo ./add_user.sh ana "" alunos
 ```
-
-Este script atualizado permite que você forneça um grupo opcional para o usuário, criando e usando o grupo especificado ou padrão conforme necessário.
 
 ### 10.2 Removendo usuários com contas expiradas
 
@@ -1190,181 +1311,8 @@ sudo ./add_users.sh usuarios.csv nome_do_grupo
 
 
 
-## 11. Configurando o envio de e-mails pelo Slurm
-
-Para configurar o `sSMTP` para enviar emails através do servidor SMTP do Gmail usando uma senha de aplicativo (senha de app), siga os passos abaixo. O Gmail requer autenticação usando SSL/TLS para enviar emails, e a senha de aplicativo é necessária para aplicativos de terceiros como o `sSMTP`.
-
-### 11.1 Passo a Passo para Configurar o sSMTP com Gmail
-
-
-
-#### 11.1.1. Gerar Senha de Aplicativo no Gmail
-
-Para permitir que o `sSMTP` envie emails através do Gmail, você precisa gerar uma senha de aplicativo. Siga estes passos:
-
-- **Passo 1:** Faça login na sua conta do Gmail.
-- **Passo 2:** Acesse a página de Gerenciamento de Conta Google em [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-- **Passo 7:** Digite um nome para identificar o `sSMTP`, por exemplo, "ssmtp".
-- **Passo 8:** Clique em "Criar".
-
-Anote a senha de aplicativo gerada. Esta será a senha que você deve usar no campo `AuthPass` no arquivo `/etc/ssmtp/ssmtp.conf`.
-
-#### 11.1.2. Configuração inicial
-
-1. Instale o pacote ssmtp:
-
-```bash
-sudo apt-get install ssmtp
-```
-
-2. Configure o arquivo de configuração `/etc/ssmtp/ssmtp.conf` com suas credenciais de e-mail:
-
-```bash
-root=seu_email@gmail.com
-mailhub=smtp.gmail.com:587
-hostname=seu_hostname
-AuthUser=seu_email@gmail.com
-AuthPass=sua_senha_do_gmail
-UseTLS=YES
-UseSTARTTLS=YES
-```
-
-Substitua `seu_email@gmail.com`, `sua_senha_do_gmail` e `seu_hostname` pelos valores apropriados.
-
-3. Certifique-se de que o Gmail está configurado para permitir "Aplicativos menos seguros" ou "Acesso a app não seguro" nas configurações de segurança da sua conta do Google.
-
-#### 11.1.3. Configuração do script
-
-Crie um novo arquivo de script, por exemplo, `/etc/slurm/slurm-email.sh`, e cole o seguinte conteúdo:
-
-```bash
-#!/bin/bash
-
-body="$2"
-recipients="$3"
-
-# Extrair Job ID, Name e Status do corpo da mensagem
-job_id=$(echo "$body" | sed -n 's/.*Job_id=\([0-9]*\).*/\1/p')
-name=$(echo "$body" | sed -n 's/.*Name=\([^ ]*\).*/\1/p')
-status=$(echo "$body" | sed -n 's/.*Name=[^ ]* \([^,]*\).*/\1/p')
-
-# Formatar o assunto
-subject="Slurm Job ID: $job_id (Status: $status, Name: $name)"
-
-# Obter os caminhos dos arquivos de saída e erro do SLURM
-output_file="$(scontrol show job $job_id | grep -oP '(?<=StdOut=)\S+')"
-error_file="$(scontrol show job $job_id | grep -oP '(?<=StdErr=)\S+')"
-
-# Criar o corpo do email em HTML
-email_body="<html><body>"
-email_body+="<p>$body</p>"
-
-# Tentar ler o arquivo de saída
-output_content=$(sudo cat "$output_file" 2>/dev/null)
-if [ -n "$output_content" ]; then
-    email_body+="<h3>Conteúdo do arquivo de saída ($output_file):</h3>"
-    email_body+="<pre>$output_content</pre>"
-else
-    email_body+="<p>Arquivo de saída ($output_file) não encontrado ou não legível.</p>"
-fi
-
-# Tentar ler o arquivo de erro
-error_content=$(sudo cat "$error_file" 2>/dev/null)
-if [ -n "$error_content" ]; then
-    email_body+="<h3>Conteúdo do arquivo de erro ($error_file):</h3>"
-    email_body+="<pre>$error_content</pre>"
-else
-    email_body+="<p>Arquivo de erro ($error_file) não encontrado ou não legível.</p>"
-fi
-
-email_body+="</body></html>"
-
-# Enviar o e-mail usando ssmtp
-(
-    echo "Subject: $subject"
-    echo "Content-Type: text/html"
-    echo ""
-    echo "$email_body"
-) | /usr/sbin/ssmtp $recipients
-```
-
-Modifique a permissão do arquivo para permitir execução
-
-```bash
-sudo chmod +x /etc/slurm/slurm-email.sh
-```
-
-Este script extrai informações relevantes do corpo da mensagem enviada pelo Slurm, como o ID do trabalho, nome e status. Em seguida, ele obtém os caminhos dos arquivos de saída e erro do Slurm, lê seu conteúdo (se existirem) e cria um corpo de e-mail em formato HTML contendo essas informações.
-
-#### 11.1.4. Atualizando  o arquivo /etc/slurm/slurm.conf
-
-1. Em todos os nós (`masternode` e `workernodes`) execute:
-
-```bash
-echo 'MailProg=/etc/slurm/slurm-email.sh' | sudo tee -a /etc/slurm/slurm.conf >/dev/null
-```
-
-2. Reinicie os serviços
-
-   No `masternode`:
-
-   ```bash
-   sudo systemctl restart slurmctld
-   ```
-
-   No `workernode`:
-
-   ```bash
-   sudo systemctl restart slurmd
-   ```
-
-#### 11.1.5. Considerações de segurança
-
-Pressupõe que o usuário `slurm` tem permissão para executar o comando `sudo cat` sem senha para ler os arquivos de saída e erro do Slurm. Isso é feito adicionando uma linha ao arquivo `/etc/sudoers`:
-
-1. Abra o arquivo `/etc/sudoers` para edição usando o comando `visudo`:
-
-```bash
-sudo visudo
-```
-
-2. Adicione a seguinte linha no final do arquivo `/etc/sudoers`:
-
-```bash
-slurm ALL=(root) NOPASSWD: /bin/cat /storage/home/*
-```
-
-**Nota**: Lembre-se de que é importante revisar cuidadosamente as permissões concedidas e garantir que elas sejam as mínimas necessárias para a funcionalidade desejada, seguindo os princípios de menor privilégio e necessidade de conhecer.
-
-#### 11.1.6. Exemplo de uso
-
-A configuracão de e-mail faz uso dos seguintes parâmetros: `--job-name`, `--output`, `--error`
-
-1. Abra o arquivo `/etc/sudoers` para edição usando o comando `visudo`:
-
-```bash
-#!/bin/bash
-#SBATCH --job-name=meu_job
-#SBATCH --output=meu_job.out
-#SBATCH --error=meu_job.err
-#SBATCH --partition=fila1
-#SBATCH --nodes=1
-#SBATCH --ntasks=2
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=1G
-#SBATCH --time=01:00:00
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=email@exemplo.com
-
-date
-echo "Job iniciado no nó: $(hostname)"
-echo "Usando $(nproc) núcleos de CPU"
-lsb_release -a
-echo "Job finalizado"
-```
-
-
-
 ## Considerações Finais
 
-Esse documento apresenta uma configuração funcional e os comandos que devem permitir que os usuários utilizem o Slurm de maneira eficiente em seu ambiente HPC. Dependendo das necessidades específicas e das políticas do ambiente, você pode/deve ajustar e expandir essa configuração.
+Esse documento apresenta uma configuração funcional e os comandos que devem permitir que os usuários utilizem o Slurm de maneira eficiente em seu ambiente HPC. Dependendo das necessidades específicas e das políticas do ambiente, você <u>pode/deve</u> ajustar e expandir essa configuração.
+
+**Caso não tenha mais nó de computação para ser configurado, o diretório `/storage/slurm` pode ser removido. Caso deseje mantê-lo, defina uma permissão mais restrita, <span style="color: red;"> por segurança</span>.**

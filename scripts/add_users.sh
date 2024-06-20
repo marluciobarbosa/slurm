@@ -21,6 +21,17 @@ if [ ! -f "$CSV_FILE" ]; then
     exit 1
 fi
 
+#! Habilitação de cotas
+# Note que que cota precisará ser habilitada para o volume /storage
+# Verifica se o comando setquota está disponível
+# if ! command -v setquota &> /dev/null
+# then
+#     echo "Comando setquota não encontrado. Instalando..."
+#     # Atualiza os repositórios e instala o pacote quota
+#     sudo apt-get update
+#     sudo apt-get install -y quota
+# fi
+
 # Função para criar o usuário e definir configurações
 create_user() {
     local NAME=$1
@@ -57,8 +68,8 @@ create_user() {
     chage -d 0 "$USERNAME"
     
     # Define cotas na unidade de armazenamento
-    sudo setquota -u $USERNAME $STORAGEQUOTA $STORAGEQUOTA 0 0 /storage
-    sudo setquota -u $USERNAME $QUOTA $QUOTA 0 0 /
+    # sudo setquota -u $USERNAME $STORAGEQUOTA $STORAGEQUOTA 0 0 /storage
+    # sudo setquota -u $USERNAME $QUOTA $QUOTA 0 0 /
     
     # Configurações do SLURM para o usuário
     sacctmgr add user name=$USERNAME DefaultAccount=$GROUP MaxJobs=$MAXJOBS MaxSubmitJobs=$MAXSUBMITJOBS MaxWall=$MAXWALL

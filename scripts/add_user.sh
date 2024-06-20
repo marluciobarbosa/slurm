@@ -14,6 +14,17 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+#! Habilitação de cotas
+# Note que que cota precisará ser habilitada para o volume /storage
+# Verifica se o comando setquota está disponível
+# if ! command -v setquota &> /dev/null
+# then
+#     echo "Comando setquota não encontrado. Instalando..."
+#     # Atualiza os repositórios e instala o pacote quota
+#     sudo apt-get update
+#     sudo apt-get install -y quota
+# fi
+
 # Atribui o nome do usuário à variável USERNAME
 USERNAME=$1
 # in case IDs are uppercase, convert to lowercase
@@ -53,8 +64,8 @@ if [ -n "$SUSPENSION_DATE" ]; then
 fi
 
 # Definir cota na unidade de armazenamento
-sudo setquota -u $USERNAME 150G 150G 0 0 /storage
-sudo setquota -u $USERNAME 5G 5G 0 0 /
+# sudo setquota -u $USERNAME 150G 150G 0 0 /storage
+# sudo setquota -u $USERNAME 5G 5G 0 0 /
 
 # Exibe a senha gerada
 echo "Usuário '$USERNAME' foi criado com sucesso."
