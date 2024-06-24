@@ -713,15 +713,72 @@ ControlAddr=100.xx.100.xx # use o IP do masternode
 
 Use `sudo slurmd -C` para imprimir as especificações da máquina. Você deve copiar as especificações de todas as máquinas no arquivo slurm.conf e modificá-lo.
 
-Exemplo de como deve ficar em seu arquivo de configuração:
+**Exemplo de como deve ficar em seu arquivo de configuração:**
 
 ```ini
 NodeName=workernode NodeAddr=100.xx.100.xx CPUs=2 Boards=1 SocketsPerBoard=2 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=1967
 ```
 
-Observe que o comando `sudo slurmd -C` pode não o `NodeAddr`. Nesse caso, o `NodeAddr` deve ser acrescentado para cada `workernode` com o `IP` correspodente.
+> **Explicação dos Parâmetros:**
+>
+> 1. **NodeName=masternode**:
+>
+>    - Define o nome lógico do nó no cluster SLURM. Neste caso, o nome do nó é "masternode".
+>
+> 2. **NodeAddr=100.xx.100.xx**:
+>
+>    - Define o endereço IP do nó. Este é o endereço pelo qual o nó é acessado na rede. O formato é típico de um endereço IPv4.
+>
+> 3. **Gres=gpu:1**:
+>
+>    - Especifica os recursos genéricos (Generic Resources, GRES) disponíveis no nó. No caso, o nó possui 1 GPU (Graphics Processing Unit) disponível para tarefas que requerem aceleração gráfica.
+>
+> 4. **CPUs=16**:
+>
+>    - Indica o número total de CPUs (ou unidades de processamento lógico) disponíveis no nó. Este valor é calculado como: $\text{CPUs}= \text{Boards} \times \text{SocketsPerBoard} \times \text{CoresPerSocket} \times \text{ThreadsPerCore}$ 
+>
+>      No caso específico: $1×1×8×2=16$.
+>
+> 5. **Boards=1**:
+>
+>    - Define o número de placas-mãe (motherboards) no nó. Neste caso, o nó tem uma única placa-mãe.
+>
+> 6. **SocketsPerBoard=1**:
+>
+>    - Define o número de soquetes de CPU por placa-mãe. Aqui, há 1 soquete de CPU na placa-mãe.
+>
+> 7. **CoresPerSocket=8**:
+>
+>    - Define o número de núcleos de CPU por soquete. Neste nó, cada soquete de CPU tem 8 núcleos.
+>
+> 8. **ThreadsPerCore=2**:
+>
+>    - Define o número de threads (ou hiper-threads) por núcleo de CPU. Aqui, cada núcleo suporta 2 threads, que é típico de CPUs com hyper-threading habilitado.
+>
+> 9. **RealMemory=63502**:
+>
+>    - Define a quantidade de memória RAM disponível no nó, medida em megabytes (MB). Neste caso, o nó possui 63,502 MB (aproximadamente 62 GB) de memória RAM.
+>
+> **Interpretação Completa:**
+>
+> A linha de configuração especifica que há um nó no cluster chamado "masternode" com o endereço IP **100.xx.100.xx**. Este nó possui **1** GPU, **16** CPUs que são organizados em **1** placa-mãe, com **1** soquete de CPU por placa-mãe, **8** núcleos por soquete, e **2** threads por núcleo. Além disso, o nó tem **63,502 MB** de memória RAM disponível.
+>
+> **Exemplo Visual:**
+>
+> Para visualizar a organização interna do nó:
+>
+> - 1 placa-mãe (Board)
+>   - 1 soquete de CPU (Socket)
+>     - 8 núcleos (Cores)
+>       - 2 threads por núcleo (Threads).
 
-Observe ainda que o comando `sudo slurmd -C` retorna o `UpTime`. Isso é apenas para conferencia e <u>**não deve ser inserido**</u> no arquivo `slurm.conf`.
+> [!CAUTION]
+>
+> O comando `sudo slurmd -C` pode não apresentar o `NodeAddr`. Nesse caso, o `NodeAddr` deve ser acrescentado para cada `workernode` com o `IP` correspodente.
+
+> [!NOTE]
+>
+> O comando `sudo slurmd -C` retorna o `UpTime`. Esse parâmetro é útil para monitoramento e gestão do cluster, indicando quanto tempo o nó está disponível para o agendador de tarefas. A sua inserção no arquivo `slurm.conf` é **opcional** e a sua adoção é uma escolha do administrador do cluster, dependendo das necessidades específicas de monitoramento e gestão.
 
 Edite o arquivo `/storage/config/gres.conf`.
 
