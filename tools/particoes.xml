@@ -1,0 +1,26 @@
+<config>
+    <particao nome="small">
+        <min_nucleos>1</min_nucleos>
+        <max_nucleos>8</max_nucleos>
+    </particao>
+    <particao nome="medium">
+        <min_nucleos>4</min_nucleos>
+        <max_nucleos>32</max_nucleos>
+    </particao>
+     <particao nome="large">
+        <min_nucleos>32</min_nucleos>
+        <max_nucleos>128</max_nucleos>
+    </particao>
+     <particao nome="gpu">
+        <min_nucleos>1</min_nucleos>
+        <max_nucleos>32</max_nucleos>
+    </particao>
+     <particao nome="deep_gpu">
+        <min_nucleos>1</min_nucleos>
+        <max_nucleos>128</max_nucleos>
+    </particao>
+    <particao nome="debug">
+        <min_nucleos>1</min_nucleos>
+        <max_nucleos>4</max_nucleos>
+    </particao>
+</config>
